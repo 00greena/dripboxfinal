@@ -19,6 +19,10 @@
     {
       "src": "api/generate-image.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/webhooks.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -33,6 +37,10 @@
     {
       "src": "/api/generate-image",
       "dest": "/api/generate-image.js"
+    },
+    {
+      "src": "/api/webhooks",
+      "dest": "/api/webhooks.js"
     },
     {
       "src": "/assets/(.*)",
