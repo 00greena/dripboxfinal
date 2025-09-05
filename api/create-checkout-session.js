@@ -21,6 +21,12 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Debug environment variables
+  console.log('Environment check:', {
+    hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
+    stripeSecretPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) + '...'
+  });
+
   // Check if Stripe secret key is available
   if (!process.env.STRIPE_SECRET_KEY) {
     console.error('STRIPE_SECRET_KEY environment variable is not set');
@@ -30,6 +36,15 @@ export default async function handler(req, res) {
 
   try {
     const { items, customerInfo } = req.body;
+    
+    // Debug request data
+    console.log('Request data:', {
+      hasItems: !!items,
+      itemsLength: items?.length,
+      hasCustomerInfo: !!customerInfo,
+      customerInfo: customerInfo,
+      origin: req.headers.origin
+    });
     
     if (!items || !customerInfo) {
       res.status(400).json({ error: 'Missing items or customer information' });
@@ -70,7 +85,16 @@ export default async function handler(req, res) {
 
     res.status(200).json({ sessionId: session.id });
   } catch (error) {
-    console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+    console.error('Error creating checkout session:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      param: error.param,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Failed to create checkout session',
+      details: error.message 
+    });
   }
 }
