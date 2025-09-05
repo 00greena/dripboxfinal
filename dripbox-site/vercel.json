@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "name": "dripbox",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_STRIPE_PUBLISHABLE_KEY": "@stripe-publishable-key"
+  }
+}
