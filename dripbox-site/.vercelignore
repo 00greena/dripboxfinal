@@ -1,0 +1,10 @@
+server.js
+node_modules
+src
+public
+.env
+*.md
+tsconfig.json
+vite.config.ts
+tailwind.config.js
+postcss.config.js
