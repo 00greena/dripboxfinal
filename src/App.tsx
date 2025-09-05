@@ -515,7 +515,7 @@ function Cart({ open, onClose, items, setItems }: { open: boolean; onClose: () =
 
       console.log('Sending checkout request...', { itemsForCheckout, customerInfo: form });
 
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch('/api/checkout-sessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
