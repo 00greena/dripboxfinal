@@ -1,17 +1,23 @@
-// Stripe Webhook Handler for local testing
+// Stripe Webhook Handler for Vercel
 import Stripe from 'stripe';
-import { buffer } from 'micro';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-06-20',
 });
 
-// Disable body parsing for webhook verification
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Helper function to get raw body for webhook verification
+async function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      data += chunk;
+    });
+    req.on('end', () => {
+      resolve(Buffer.from(data));
+    });
+    req.on('error', reject);
+  });
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,7 +25,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const buf = await buffer(req);
+  let buf;
+  try {
+    // Get raw body for webhook signature verification
+    buf = await getRawBody(req);
+  } catch (error) {
+    console.error('Error reading request body:', error);
+    return res.status(400).json({ error: 'Invalid request body' });
+  }
+
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
