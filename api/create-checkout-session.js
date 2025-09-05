@@ -5,14 +5,36 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 export default async function handler(req, res) {
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    res.status(405).end('Method Not Allowed');
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Check if Stripe secret key is available
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('STRIPE_SECRET_KEY environment variable is not set');
+    res.status(500).json({ error: 'Stripe configuration error' });
     return;
   }
 
   try {
     const { items, customerInfo } = req.body;
+    
+    if (!items || !customerInfo) {
+      res.status(400).json({ error: 'Missing items or customer information' });
+      return;
+    }
 
     // Create line items for Stripe
     const lineItems = items.map(item => ({
