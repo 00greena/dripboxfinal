@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-06-20',
 });
 
 export default async function handler(req, res) {
@@ -21,12 +21,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Debug environment variables
-  console.log('Environment check:', {
-    hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
-    stripeSecretPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) + '...'
-  });
-
   // Check if Stripe secret key is available
   if (!process.env.STRIPE_SECRET_KEY) {
     console.error('STRIPE_SECRET_KEY environment variable is not set');
@@ -35,66 +29,67 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { items, customerInfo } = req.body;
+    const { items = [], customerInfo = {} } = req.body || {};
     
-    // Debug request data
-    console.log('Request data:', {
-      hasItems: !!items,
-      itemsLength: items?.length,
-      hasCustomerInfo: !!customerInfo,
-      customerInfo: customerInfo,
-      origin: req.headers.origin
-    });
-    
-    if (!items || !customerInfo) {
-      res.status(400).json({ error: 'Missing items or customer information' });
-      return;
+    // Validate input
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'No items provided' });
     }
 
-    // Create line items for Stripe
-    const lineItems = items.map(item => ({
-      price_data: {
-        currency: 'gbp',
-        product_data: {
-          name: `STASHBOX - ${item.name}`,
-          description: `Custom 3D-printed storage box lid with ${item.textureId} texture`,
-          images: item.preview ? [item.preview] : [],
+    // Create line items for Stripe - ensure proper format
+    const line_items = items.map(item => {
+      // Ensure unit_amount is integer (in pence for GBP)
+      const unitAmount = Math.round(Number(item.price) * 100);
+      if (!Number.isInteger(unitAmount) || unitAmount <= 0) {
+        throw new Error(`Invalid price for item ${item.name}: ${item.price}`);
+      }
+
+      return {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: `STASHBOX - ${item.name}`,
+            description: `Custom 3D-printed storage box lid with ${item.textureId || 'custom'} texture`,
+            images: item.preview ? [item.preview] : [],
+          },
+          unit_amount: unitAmount,
         },
-        unit_amount: Math.round(item.price * 100), // Convert to pence
-      },
-      quantity: item.qty,
-    }));
+        quantity: Math.max(1, Math.round(Number(item.qty) || 1)),
+      };
+    });
+
+    const origin = req.headers.origin || 'https://05aug.vercel.app';
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: lineItems,
       mode: 'payment',
-      success_url: `${req.headers.origin || 'https://05aug.vercel.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'https://05aug.vercel.app'}/cart`,
-      customer_email: customerInfo.email,
-      billing_address_collection: 'required',
+      line_items,
+      customer_email: customerInfo.email || undefined,
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
       shipping_address_collection: {
         allowed_countries: ['GB', 'US', 'CA', 'AU', 'DE', 'FR', 'ES', 'IT', 'NL'],
       },
+      success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/cart`,
       metadata: {
-        customer_name: customerInfo.name,
-        customer_address: customerInfo.address,
+        customer_name: customerInfo.name || '',
+        customer_address: customerInfo.address || '',
       },
     });
 
-    res.status(200).json({ sessionId: session.id });
+    // Return the session URL (not sessionId)
+    res.status(200).json({ url: session.url });
   } catch (error) {
-    console.error('Error creating checkout session:', {
-      message: error.message,
-      type: error.type,
-      code: error.code,
-      param: error.param,
-      stack: error.stack
+    console.error('create-checkout-session error', {
+      message: error?.message,
+      type: error?.type,
+      code: error?.code,
+      hasKey: Boolean(process.env.STRIPE_SECRET_KEY),
+      keyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 8) + '...'
     });
     res.status(500).json({ 
-      error: 'Failed to create checkout session',
-      details: error.message 
+      error: 'Failed to create checkout session'
     });
   }
 }

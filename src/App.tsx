@@ -530,15 +530,22 @@ function Cart({ open, onClose, items, setItems }: { open: boolean; onClose: () =
         throw new Error('Failed to create checkout session');
       }
 
-      const { sessionId } = await response.json();
+      const data = await response.json();
 
-      // Redirect to Stripe Checkout
-      const result = await stripe.redirectToCheckout({
-        sessionId,
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
+      // Check if we got a URL (recommended) or sessionId (legacy)
+      if (data.url) {
+        // Direct redirect to Stripe Checkout URL (recommended)
+        window.location.href = data.url;
+      } else if (data.sessionId) {
+        // Legacy method using Stripe.js redirectToCheckout
+        const result = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+      } else {
+        throw new Error('Invalid response from checkout session');
       }
     } catch (error) {
       console.error('Payment error:', error);
