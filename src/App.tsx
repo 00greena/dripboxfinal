@@ -492,8 +492,13 @@ function Cart({ open, onClose, items, setItems }: { open: boolean; onClose: () =
     try {
       // Get Stripe publishable key
       const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      console.log('Environment check:', {
+        hasKey: !!stripePublishableKey,
+        allEnvVars: import.meta.env
+      });
+      
       if (!stripePublishableKey) {
-        throw new Error('Stripe publishable key not found');
+        throw new Error('Stripe publishable key not found. Please check environment variables.');
       }
 
       // Initialize Stripe
