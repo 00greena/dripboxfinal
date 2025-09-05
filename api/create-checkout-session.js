@@ -70,8 +70,8 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}/cart`,
+      success_url: `${req.headers.origin || 'https://05aug.vercel.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'https://05aug.vercel.app'}/cart`,
       customer_email: customerInfo.email,
       billing_address_collection: 'required',
       shipping_address_collection: {
